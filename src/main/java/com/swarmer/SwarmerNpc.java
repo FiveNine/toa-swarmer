@@ -10,24 +10,19 @@ import com.swarmer.SwarmerPlugin;
 import javax.inject.Inject;
 import java.awt.*;
 
+@Getter
 public class SwarmerNpc
 {
-    @Getter
-    private NPC npc;
+    private final NPC npc;
 
-    @Getter
-    private int id;
+    private final int id;
 
-    @Getter
-    private int index;
+    private final int index;
 
-    @Getter
     @Setter
     private boolean isAlive;
 
-    @Getter
-    private int waveSpawned;
-
+    private final int waveSpawned;
 
     public SwarmerNpc(NPC npc)
     {
