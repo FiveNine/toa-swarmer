@@ -37,11 +37,18 @@ public class SwarmerPlugin extends Plugin
 {
 	@Inject
 	public Client client;
+	@Inject
+	public SwarmerConfig config;
+	@Inject
+	private ClientToolbar clientToolbar;
 
     @Inject
     private OverlayManager overlayManager;
     @Inject
     private SwarmerOverlay swarmerOverlay;
+
+	private SwarmerSidePanel sidePanel;
+	private NavigationButton sidePanelButton;
 
 	public static final int SWARM_NPC_ID = 11723;
 	public static int WaveNumber = 1;
@@ -49,6 +56,10 @@ public class SwarmerPlugin extends Plugin
 	private final int KEPHRI_DOWNED_NPC_ID = 11720;
 	private final int[] KEPHRI_ALIVE_NPC_IDS = {11721, 11719};
 
+	private final String ROOM_STARTED_MESSAGE = "Challenge started: Kephri.";
+	private final String ROOM_ENDED_MESSAGE = "Challenge complete: Kephri.";
+
+	private boolean isRoomStarted = false;
 	private boolean isKephriDowned = false;
 
 	@Getter
@@ -57,12 +68,15 @@ public class SwarmerPlugin extends Plugin
 	@Override
 	protected void startUp() throws Exception
 	{
+		createSidePanel();
 		overlayManager.add(swarmerOverlay);
+		sidePanel.setText("Swarmer plugin started\n");
 	}
 
 	@Override
 	protected void shutDown() throws Exception
 	{
+		removeSidePanel();
 		overlayManager.remove(swarmerOverlay);
 	}
 
@@ -77,9 +91,11 @@ public class SwarmerPlugin extends Plugin
 			if (swarmers.stream().noneMatch(s -> s.getIndex() == swarmer.getIndex()))
 			{
 				swarmers.add(swarmer);
+				sidePanel.setText(sidePanel.getText() + "\n" + swarmer.getWaveSpawned() + ": index-" + swarmer.getIndex());
 				getCardinalNpcs(npc).forEach(cardinalNpc -> {
 					SwarmerNpc cardinalSwarmer = new SwarmerNpc(cardinalNpc);
 					if (swarmers.stream().noneMatch(s -> s.getIndex() == cardinalSwarmer.getIndex())) {
+						sidePanel.setText(sidePanel.getText() + "\n" + swarmer.getWaveSpawned() + ": index-" + swarmer.getIndex() + "-cardinal");
 						swarmers.add(cardinalSwarmer);
 					}
 				});
@@ -114,6 +130,28 @@ public class SwarmerPlugin extends Plugin
 			if (!npcs.contains(swarmer.getNpc()))
 			{
 				swarmers.remove(i);
+			}
+		}
+	}
+
+	@Subscribe
+	public void onChatMessage(ChatMessage event)
+	{
+		if (event.getType().equals(ChatMessageType.GAMEMESSAGE))
+		{
+			if (event.getMessage().equals(ROOM_STARTED_MESSAGE))
+			{
+				isRoomStarted = true;
+				isKephriDowned = false;
+//				SwarmerPlugin.WaveNumber = 1;
+//				swarmers.clear();
+			}
+			else if (event.getMessage().equals(ROOM_ENDED_MESSAGE))
+			{
+				isRoomStarted = false;
+				isKephriDowned = false;
+//				SwarmerPlugin.WaveNumber = 1;
+//				swarmers.clear();
 			}
 		}
 	}
@@ -160,6 +198,11 @@ public class SwarmerPlugin extends Plugin
 		if (westNpc != null)
 			cardinalNpcs.add(westNpc);
 
+
+		if (!cardinalNpcs.isEmpty())
+		{
+			sidePanel.setText(sidePanel.getText() + "\nTriple swarms spawned");
+		}
 		return cardinalNpcs;
 	}
 
@@ -178,4 +221,22 @@ public class SwarmerPlugin extends Plugin
 		return null;
 	}
 
+	private void createSidePanel()
+	{
+		final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/swarmer-logo.png");
+		sidePanel = new SwarmerSidePanel(client, this, config);
+		sidePanelButton = NavigationButton.builder()
+			.tooltip("Swarmer")
+			.icon(icon)
+			.priority(1)
+			.panel(sidePanel)
+			.build();
+		clientToolbar.addNavigation(sidePanelButton);
+//		sidePanel.startPanel();
+		sidePanel.createSidePanel();
+	}
+	private void removeSidePanel()
+	{
+		clientToolbar.removeNavigation(sidePanelButton);
+	}
 }
